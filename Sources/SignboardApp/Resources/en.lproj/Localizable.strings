@@ -1,0 +1,41 @@
+"menu.shared.font" = "Font…";
+"menu.shared.space_guide" = "Space Guide…";
+
+"menu.app.new_signboard" = "New Signboard";
+"menu.app.delete_all_signboards" = "Delete All Signboards…";
+"menu.app.hide_all_signboards" = "Hide All Signboards";
+"menu.app.show_all_signboards" = "Show All Signboards";
+"menu.app.default_text_color" = "Default Text Color";
+"menu.app.drag_modifier" = "Drag Modifier";
+"menu.app.version_format" = "Version %@";
+"menu.app.quit_signboard" = "Quit Signboard";
+
+"menu.context.edit_signboard" = "Edit Signboard…";
+"menu.context.delete_signboard" = "Delete Signboard…";
+"menu.context.text_color" = "Text Color";
+"menu.context.opacity" = "Opacity";
+
+"menu.drag_modifier.option" = "Option";
+"menu.drag_modifier.command" = "Command";
+"menu.drag_modifier.shift" = "Shift";
+
+"menu.text_color.white" = "White";
+"menu.text_color.black" = "Black";
+
+"alert.space_guide.title" = "Space Assignment";
+"alert.space_guide.message" = "Open Mission Control and drag the signboard window onto the target desktop to assign it.";
+"alert.space_guide.button_ok" = "OK";
+
+"alert.delete_signboard.title" = "Delete signboard?";
+"alert.delete_signboard.message" = "This will delete “%@”. This cannot be undone.";
+"alert.delete_signboard.button_delete" = "Delete";
+"alert.delete_signboard.button_cancel" = "Cancel";
+
+"alert.delete_all_signboards.title" = "Delete all signboards?";
+"alert.delete_all_signboards.message" = "This will delete every signboard. This cannot be undone.";
+"alert.delete_all_signboards.button_delete_all" = "Delete All";
+"alert.delete_all_signboards.button_cancel" = "Cancel";
+
+"signboard.default_name" = "Signboard %d";
+
+"accessibility.status_item" = "signboard";
