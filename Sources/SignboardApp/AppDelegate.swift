@@ -189,8 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
         return true
     }
 
-    @objc func changeFont(_ sender: Any?) {
-        guard let manager = sender as? NSFontManager else {
+    @MainActor @objc func changeFont(_ sender: NSFontManager?) {
+        guard let manager = sender else {
             return
         }
         let converted = manager.convert(currentFont())
