@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag and source version
+        id: versions
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: ${GITHUB_REF_NAME}. Expected vX.Y.Z." >&2
+            exit 1
+          fi
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          SOURCE_VERSION="$(sed -nE 's/^[[:space:]]*public static let current = "([^"]+)".*/\1/p' Sources/SignboardCore/SignboardCoreModels.swift | head -n 1)"
+
+          if [[ -z "${SOURCE_VERSION}" ]]; then
+            echo "Could not resolve SignboardVersion.current from source." >&2
+            exit 1
+          fi
+
+          if [[ "${TAG_VERSION}" != "${SOURCE_VERSION}" ]]; then
+            echo "Version mismatch: tag=${TAG_VERSION}, source=${SOURCE_VERSION}" >&2
+            exit 1
+          fi
+
+          echo "tag_version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "source_version=${SOURCE_VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build release artifact
+        id: package
+        env:
+          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
+        run: |
+          set -euo pipefail
+
+          CREATE_ZIP=1 APP_VERSION="${SOURCE_VERSION}" APP_BUILD_VERSION="${GITHUB_RUN_NUMBER}" ./scripts/package-app.sh
+
+          ZIP_PATH="dist/SignboardApp-${SOURCE_VERSION}.zip"
+          mv "dist/SignboardApp.zip" "${ZIP_PATH}"
+          echo "zip_path=${ZIP_PATH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate checksum
+        id: checksum
+        env:
+          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
+          ZIP_PATH: ${{ steps.package.outputs.zip_path }}
+        run: |
+          set -euo pipefail
+
+          CHECKSUM_PATH="${ZIP_PATH}.sha256"
+          shasum -a 256 "${ZIP_PATH}" > "${CHECKSUM_PATH}"
+          CHECKSUM_VALUE="$(awk '{ print $1 }' "${CHECKSUM_PATH}")"
+
+          echo "checksum_path=${CHECKSUM_PATH}" >> "${GITHUB_OUTPUT}"
+          echo "checksum_value=${CHECKSUM_VALUE}" >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### Release Artifact"
+            echo ""
+            echo "- Tag: \`${GITHUB_REF_NAME}\`"
+            echo "- Version: \`${SOURCE_VERSION}\`"
+            echo "- Archive: \`${ZIP_PATH}\`"
+            echo "- SHA-256: \`${CHECKSUM_VALUE}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Ensure release does not exist
+        run: |
+          set -euo pipefail
+
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists. This workflow only creates new releases." >&2
+            exit 1
+          fi
+
+      - name: Create release and upload assets
+        env:
+          ZIP_PATH: ${{ steps.package.outputs.zip_path }}
+          CHECKSUM_PATH: ${{ steps.checksum.outputs.checksum_path }}
+        run: |
+          set -euo pipefail
+
+          gh release create "${GITHUB_REF_NAME}" \
+            "${ZIP_PATH}" \
+            "${CHECKSUM_PATH}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Automated release for ${GITHUB_REF_NAME}"
