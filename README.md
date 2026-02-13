@@ -34,6 +34,48 @@ swift build
 swift run SignboardApp
 ```
 
+## Build Distributable App Bundle
+
+Create a distributable artifact at `dist/SignboardApp.app`:
+
+```bash
+./scripts/package-app.sh
+```
+
+Optional release zip:
+
+```bash
+CREATE_ZIP=1 ./scripts/package-app.sh
+```
+
+Version metadata source:
+
+- `CFBundleShortVersionString`: `APP_VERSION` env var, defaulting to `SignboardVersion.current`
+- `CFBundleVersion`: `APP_BUILD_VERSION` env var, defaulting to `APP_VERSION`
+
+Example:
+
+```bash
+APP_VERSION=0.2.0 APP_BUILD_VERSION=20260213 ./scripts/package-app.sh
+```
+
+## Bundle Verification Commands
+
+```bash
+# 1) Build the artifact
+./scripts/package-app.sh
+
+# 2) Launch bundled GUI app
+open dist/SignboardApp.app
+
+# 3) Run bundled CLI from inside the app bundle
+dist/SignboardApp.app/Contents/MacOS/signboard --version
+dist/SignboardApp.app/Contents/MacOS/signboard list
+dist/SignboardApp.app/Contents/MacOS/signboard create "Packaged app smoke test"
+```
+
+The bundled CLI requires the bundled app to be running, same as local development.
+
 ## End-User Quick Start
 
 1. Launch `SignboardApp`.
