@@ -4,6 +4,21 @@ public enum SignboardVersion {
     public static let current = "0.1.0"
 
     public static func displayString(bundle: Bundle = .main) -> String {
+        if let fromBundle = displayStringIfPresent(in: bundle) {
+            return fromBundle
+        }
+
+        if let appBundle = enclosingAppBundle(),
+           appBundle.bundleURL != bundle.bundleURL,
+           let fromAppBundle = displayStringIfPresent(in: appBundle)
+        {
+            return fromAppBundle
+        }
+
+        return current
+    }
+
+    private static func displayStringIfPresent(in bundle: Bundle) -> String? {
         let shortVersion = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         let buildVersion = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
 
@@ -18,7 +33,26 @@ public enum SignboardVersion {
             return buildVersion
         }
 
-        return current
+        return nil
+    }
+
+    private static func enclosingAppBundle() -> Bundle? {
+        guard let executableURL = Bundle.main.executableURL?.resolvingSymlinksInPath() else {
+            return nil
+        }
+
+        var candidateURL = executableURL.deletingLastPathComponent()
+        while candidateURL.path != "/" {
+            if candidateURL.pathExtension == "app" {
+                return Bundle(url: candidateURL)
+            }
+            let parentURL = candidateURL.deletingLastPathComponent()
+            if parentURL.path == candidateURL.path {
+                break
+            }
+            candidateURL = parentURL
+        }
+        return nil
     }
 }
 
