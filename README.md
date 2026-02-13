@@ -59,6 +59,29 @@ Example:
 APP_VERSION=0.2.0 APP_BUILD_VERSION=20260213 ./scripts/package-app.sh
 ```
 
+## Release Automation (GitHub Actions)
+
+Tag pushes that match `vX.Y.Z` trigger `.github/workflows/release.yml`.
+The tag version must match `SignboardVersion.current` in source.
+
+Generated release assets:
+
+- `SignboardApp-<version>.zip`
+- `SignboardApp-<version>.zip.sha256`
+
+Release a new version:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Checksum verification (from repository root):
+
+```bash
+shasum -a 256 -c dist/SignboardApp-0.2.0.zip.sha256
+```
+
 ## Bundle Verification Commands
 
 ```bash
