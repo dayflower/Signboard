@@ -1,0 +1,27 @@
+name: Bump Homebrew Cask
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bump-homebrew-cask:
+    runs-on: macos-14
+    steps:
+      - name: Configure git user
+        uses: Homebrew/actions/git-user-config@main
+        with:
+          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          username: UpdateBrew
+
+      - name: Bump Signboard cask
+        uses: Homebrew/actions/bump-packages@main
+        with:
+          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          casks: dayflower/tap/signboard
+          fork: false
