@@ -27,94 +27,21 @@ You can treat each signboard as a lightweight visual anchor for each Space.
 - **Persistent** — Signboards are saved and restored across launches
 - **Modifier-based interaction** — Reposition panels and open context menus while holding a modifier key
 
-## Build & Run
+## Install (Homebrew)
 
 ```bash
-swift build
-swift run SignboardApp
+brew tap dayflower/tap
+brew install --cask dayflower/tap/signboard
 ```
 
-## Build Distributable App Bundle
+## Install (GitHub Releases)
 
-Create a distributable artifact at `dist/SignboardApp.app`:
+1. Open the latest release page: [GitHub Releases](https://github.com/dayflower/Signboard/releases/latest)
+2. Download `SignboardApp-<version>.zip` (and `SignboardApp-<version>.zip.sha256` if you want checksum verification).
+3. Unzip and move `SignboardApp.app` to `/Applications`.
+4. Launch `SignboardApp`.
 
-```bash
-./scripts/package-app.sh
-```
-
-Optional release zip:
-
-```bash
-CREATE_ZIP=1 ./scripts/package-app.sh
-```
-
-Version metadata source:
-
-- `CFBundleShortVersionString`: `APP_VERSION` env var, defaulting to `SignboardVersion.current`
-- `CFBundleVersion`: `APP_BUILD_VERSION` env var, defaulting to `APP_VERSION`
-
-Example:
-
-```bash
-APP_VERSION=0.2.0 APP_BUILD_VERSION=20260213 ./scripts/package-app.sh
-```
-
-## Release Automation (GitHub Actions)
-
-Tag pushes that match `vX.Y.Z` trigger `.github/workflows/release.yml`.
-The tag version must match `SignboardVersion.current` in source.
-
-Generated release assets:
-
-- `SignboardApp-<version>.zip`
-- `SignboardApp-<version>.zip.sha256`
-
-Release a new version:
-
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-```
-
-Checksum verification (from repository root):
-
-```bash
-shasum -a 256 -c dist/SignboardApp-0.2.0.zip.sha256
-```
-
-## Homebrew Tap Automation (GitHub Actions)
-
-Publishing a GitHub Release triggers `.github/workflows/bump-homebrew-cask.yml`.
-The workflow first runs `brew tap dayflower/tap`, then validates cask resolution with
-`brew info --cask dayflower/tap/signboard` before calling
-`Homebrew/actions/bump-packages`.
-If the preflight check fails, the workflow exits early with a clear diagnostic message.
-When preflight succeeds, `bump-packages` updates cask metadata
-(version/checksum/url) in `dayflower/homebrew-tap` and opens or updates a pull
-request when a bump is needed.
-
-Required repository secret:
-
-- `HOMEBREW_GITHUB_API_TOKEN` with permission to push branches and open pull requests in `dayflower/homebrew-tap`
-
-## Bundle Verification Commands
-
-```bash
-# 1) Build the artifact
-./scripts/package-app.sh
-
-# 2) Launch bundled GUI app
-open dist/SignboardApp.app
-
-# 3) Run bundled CLI from inside the app bundle
-dist/SignboardApp.app/Contents/MacOS/signboard --version
-dist/SignboardApp.app/Contents/MacOS/signboard list
-dist/SignboardApp.app/Contents/MacOS/signboard create "Packaged app smoke test"
-```
-
-The bundled CLI requires the bundled app to be running, same as local development.
-
-## End-User Quick Start
+## Quick Start
 
 1. Launch `SignboardApp`.
 2. Open the menu bar item (signpost icon) and choose **New Signboard**.
@@ -154,6 +81,36 @@ signboard update -i {id} "Updated text"
 signboard hide-all
 signboard show-all
 ```
+
+## Update
+
+Homebrew:
+
+```bash
+brew upgrade --cask dayflower/tap/signboard
+```
+
+GitHub Releases:
+
+1. Download the latest `SignboardApp-<version>.zip` from [GitHub Releases](https://github.com/dayflower/Signboard/releases/latest).
+2. Replace your existing `SignboardApp.app` with the new one.
+
+## Uninstall
+
+Homebrew:
+
+```bash
+brew uninstall --cask dayflower/tap/signboard
+```
+
+GitHub Releases:
+
+1. Quit `SignboardApp`.
+2. Remove `SignboardApp.app` from `/Applications`.
+
+## For Contributors
+
+Developer documentation is available in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Preferences
 
