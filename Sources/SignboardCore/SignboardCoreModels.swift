@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SignboardVersion {
-    public static let current = "0.1.0"
+    public static let current = "0.1.1"
 
     public static func displayString(bundle: Bundle = .main) -> String {
         if let fromBundle = displayStringIfPresent(in: bundle) {
@@ -9,8 +9,8 @@ public enum SignboardVersion {
         }
 
         if let appBundle = enclosingAppBundle(),
-           appBundle.bundleURL != bundle.bundleURL,
-           let fromAppBundle = displayStringIfPresent(in: appBundle)
+            appBundle.bundleURL != bundle.bundleURL,
+            let fromAppBundle = displayStringIfPresent(in: appBundle)
         {
             return fromAppBundle
         }
@@ -19,7 +19,8 @@ public enum SignboardVersion {
     }
 
     private static func displayStringIfPresent(in bundle: Bundle) -> String? {
-        let shortVersion = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let shortVersion =
+            bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         let buildVersion = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
 
         if let shortVersion, !shortVersion.isEmpty {
@@ -78,7 +79,8 @@ public final class SignboardCommand: NSObject, NSSecureCoding {
         SignboardAction(rawValue: actionRaw)
     }
 
-    public init(action: SignboardAction, id: String? = nil, text: String? = nil, all: Bool = false) {
+    public init(action: SignboardAction, id: String? = nil, text: String? = nil, all: Bool = false)
+    {
         actionRaw = action.rawValue
         self.id = id
         self.text = text
@@ -95,7 +97,8 @@ public final class SignboardCommand: NSObject, NSSecureCoding {
     }
 
     public required init?(coder: NSCoder) {
-        guard let actionRaw = coder.decodeObject(of: NSString.self, forKey: "actionRaw") as String? else {
+        guard let actionRaw = coder.decodeObject(of: NSString.self, forKey: "actionRaw") as String?
+        else {
             return nil
         }
         self.actionRaw = actionRaw
