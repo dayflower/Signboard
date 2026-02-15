@@ -93,6 +93,10 @@ Main behavior:
 4. Generate `dist/SignboardApp-<version>.zip.sha256`.
 5. Ensure a release with the same tag does not already exist.
 6. Create a GitHub Release and upload both zip and checksum assets.
+7. Run the `bump-homebrew-cask` job only after `release` succeeds (`needs: release`).
+8. Configure Homebrew git user and run `brew tap dayflower/tap`.
+9. Run a preflight check with `brew info --cask dayflower/tap/signboard`.
+10. Run `Homebrew/actions/bump-packages` for `dayflower/tap/signboard`.
 
 Manual release steps:
 
@@ -106,22 +110,6 @@ Checksum verification example:
 ```bash
 shasum -a 256 -c dist/SignboardApp-0.2.0.zip.sha256
 ```
-
-## Homebrew Cask Bump Automation
-
-Workflow file: `.github/workflows/bump-homebrew-cask.yml`
-
-Triggers:
-
-- `release` event with type `published`
-- `workflow_dispatch`
-
-Main behavior:
-
-1. Configure git user via `Homebrew/actions/git-user-config`.
-2. Run `brew tap dayflower/tap`.
-3. Run a preflight check with `brew info --cask dayflower/tap/signboard`.
-4. Run `Homebrew/actions/bump-packages` for `dayflower/tap/signboard`.
 
 Required secret:
 
