@@ -82,6 +82,17 @@ Checksum verification (from repository root):
 shasum -a 256 -c dist/SignboardApp-0.2.0.zip.sha256
 ```
 
+## Homebrew Tap Automation (GitHub Actions)
+
+Publishing a GitHub Release triggers `.github/workflows/bump-homebrew-cask.yml`.
+This workflow runs `Homebrew/actions/bump-packages` for `dayflower/tap/signboard`,
+which updates cask metadata (version/checksum/url) in `dayflower/homebrew-tap`
+and opens or updates a pull request when a bump is needed.
+
+Required repository secret:
+
+- `HOMEBREW_GITHUB_API_TOKEN` with permission to push branches and open pull requests in `dayflower/homebrew-tap`
+
 ## Bundle Verification Commands
 
 ```bash
