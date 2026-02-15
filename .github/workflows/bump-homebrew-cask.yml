@@ -17,7 +17,7 @@ jobs:
         uses: Homebrew/actions/git-user-config@main
         with:
           token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
-          username: UpdateBrew
+          username: BrewTestBot
 
       - name: Bump Signboard cask
         uses: Homebrew/actions/bump-packages@main
