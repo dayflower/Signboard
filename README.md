@@ -85,9 +85,13 @@ shasum -a 256 -c dist/SignboardApp-0.2.0.zip.sha256
 ## Homebrew Tap Automation (GitHub Actions)
 
 Publishing a GitHub Release triggers `.github/workflows/bump-homebrew-cask.yml`.
-This workflow runs `Homebrew/actions/bump-packages` for `dayflower/tap/signboard`,
-which updates cask metadata (version/checksum/url) in `dayflower/homebrew-tap`
-and opens or updates a pull request when a bump is needed.
+The workflow first runs `brew tap dayflower/tap`, then validates cask resolution with
+`brew info --cask dayflower/tap/signboard` before calling
+`Homebrew/actions/bump-packages`.
+If the preflight check fails, the workflow exits early with a clear diagnostic message.
+When preflight succeeds, `bump-packages` updates cask metadata
+(version/checksum/url) in `dayflower/homebrew-tap` and opens or updates a pull
+request when a bump is needed.
 
 Required repository secret:
 
