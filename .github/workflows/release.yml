@@ -99,3 +99,37 @@ jobs:
             "${CHECKSUM_PATH}" \
             --title "${GITHUB_REF_NAME}" \
             --notes "Automated release for ${GITHUB_REF_NAME}"
+
+  bump-homebrew-cask:
+    name: Bump Homebrew Cask
+    runs-on: macos-14
+    needs: release
+    if: ${{ needs.release.result == 'success' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Configure git user
+        uses: Homebrew/actions/git-user-config@main
+        with:
+          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          username: BrewTestBot
+
+      - name: Tap dayflower/tap
+        run: brew tap dayflower/tap
+
+      - name: Preflight cask availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          cask="dayflower/tap/signboard"
+          if ! brew info --cask "$cask"; then
+            echo "::error title=Homebrew cask preflight failed::Unable to resolve $cask after tapping dayflower/tap. Verify that the cask exists in dayflower/homebrew-tap and that HOMEBREW_GITHUB_API_TOKEN can access it."
+            exit 1
+          fi
+
+      - name: Bump Signboard cask
+        uses: Homebrew/actions/bump-packages@main
+        with:
+          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          casks: dayflower/tap/signboard
+          fork: false
