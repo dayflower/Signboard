@@ -26,20 +26,18 @@ jobs:
           set -euo pipefail
 
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          SOURCE_VERSION="$(sed -nE 's/^[[:space:]]*public static let current = "([^"]+)".*/\1/p' Sources/SignboardCore/SignboardCoreModels.swift | head -n 1)"
+          VERSION_FILE_VERSION="$(./scripts/version.sh current)"
 
-          if [[ -z "${SOURCE_VERSION}" ]]; then
-            echo "Could not resolve SignboardVersion.current from source." >&2
-            exit 1
-          fi
+          ./scripts/version.sh validate "${TAG_VERSION}"
+          ./scripts/version.sh assert-consistent
 
-          if [[ "${TAG_VERSION}" != "${SOURCE_VERSION}" ]]; then
-            echo "Version mismatch: tag=${TAG_VERSION}, source=${SOURCE_VERSION}" >&2
+          if [[ "${TAG_VERSION}" != "${VERSION_FILE_VERSION}" ]]; then
+            echo "Version mismatch: tag=${TAG_VERSION}, VERSION=${VERSION_FILE_VERSION}" >&2
             exit 1
           fi
 
           echo "tag_version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "source_version=${SOURCE_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "source_version=${VERSION_FILE_VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Build release artifact
         id: package

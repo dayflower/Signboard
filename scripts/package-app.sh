@@ -15,7 +15,6 @@ SKIP_BUILD="${SKIP_BUILD:-0}"
 APP_BUNDLE_PATH="${DIST_DIR}/${APP_NAME}.app"
 ZIP_PATH="${DIST_DIR}/${APP_NAME}.zip"
 CACHE_DIR="${ROOT_DIR}/.build/local-cache"
-VERSION_SOURCE="${ROOT_DIR}/Sources/SignboardCore/SignboardCoreModels.swift"
 
 mkdir -p "${CACHE_DIR}/swiftpm-module-cache" "${CACHE_DIR}/clang-module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="${CACHE_DIR}/swiftpm-module-cache"
@@ -38,11 +37,7 @@ for path in "${GUI_EXECUTABLE_PATH}" "${CLI_EXECUTABLE_PATH}" "${RESOURCE_BUNDLE
     fi
 done
 
-DEFAULT_VERSION="$(sed -nE 's/^[[:space:]]*public static let current = "([^"]+)".*/\1/p' "${VERSION_SOURCE}" | head -n 1)"
-if [[ -z "${DEFAULT_VERSION}" ]]; then
-    echo "Could not resolve default app version from ${VERSION_SOURCE}" >&2
-    exit 1
-fi
+DEFAULT_VERSION="$("${SCRIPT_DIR}/version.sh" current)"
 
 APP_VERSION="${APP_VERSION:-${DEFAULT_VERSION}}"
 APP_BUILD_VERSION="${APP_BUILD_VERSION:-${APP_VERSION}}"
