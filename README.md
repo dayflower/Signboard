@@ -82,6 +82,8 @@ signboard hide-all
 signboard show-all
 ```
 
+Raycast Script Command examples are available in [examples/raycast](examples/raycast/README.md).
+
 ## Update
 
 Homebrew:
