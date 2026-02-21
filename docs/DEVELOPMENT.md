@@ -80,6 +80,22 @@ Commands:
 - `sync-swift [version]`: sync `SignboardVersion.current` (from `VERSION` when omitted)
 - `assert-consistent`: fail unless `VERSION` and `SignboardVersion.current` match
 
+## Codex Skill Integration
+
+This repository ships a project-local Codex skill at:
+
+- `.codex/skills/signboard-release-skill`
+
+Modern Codex discovers project-local skills from `.codex/skills` directly.
+No installation script is required for this repository-specific skill.
+
+If Codex is already running, restart it after pulling changes so the updated skill is reloaded.
+
+Skill invocation examples:
+
+- `Use $signboard-release-skill to run a patch version bump PR for this repository.`
+- `Use $signboard-release-skill to run the post-merge lightweight tagging flow for version 0.2.0.`
+
 ## Bundle Verification
 
 From repository root:
