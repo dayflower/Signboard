@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signboard Release Skill"
+  short_description: "Run PR-first version bumps and release tagging"
+  default_prompt: "Use $signboard-release-skill to run a patch version bump PR for this repository."
