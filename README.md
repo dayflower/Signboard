@@ -77,6 +77,12 @@ signboard create -i myboard "Status: OK"
 # Update an existing signboard
 signboard update -i {id} "Updated text"
 
+# Delete an existing signboard
+signboard delete -i {id}
+
+# Delete all signboards
+signboard delete-all
+
 # Hide / show all signboards
 signboard hide-all
 signboard show-all

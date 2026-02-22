@@ -28,6 +28,8 @@ final class SignboardCommandHandler {
             return handleCreate(command)
         case .update:
             return handleUpdate(command)
+        case .delete:
+            return handleDelete(command)
         case .hide:
             return handleHide(command)
         case .show:
@@ -70,6 +72,23 @@ final class SignboardCommandHandler {
         _ = command
         setVisibility(false)
         return SignboardResponse.ok("hidden")
+    }
+
+    private func handleDelete(_ command: SignboardCommand) -> SignboardResponse {
+        if command.all {
+            let count = manager.controllers.count
+            manager.removeAllSignboards()
+            return SignboardResponse.ok("deleted-all \(count)")
+        }
+
+        guard let id = command.id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else {
+            return SignboardResponse.failure(code: 1, message: "ID is required.")
+        }
+        guard manager.signboardController(for: id) != nil else {
+            return SignboardResponse.failure(code: 2, message: "Unknown id: \(id)")
+        }
+        manager.removeSignboard(id: id)
+        return SignboardResponse.ok("deleted \(id)")
     }
 
     private func handleShow(_ command: SignboardCommand) -> SignboardResponse {
