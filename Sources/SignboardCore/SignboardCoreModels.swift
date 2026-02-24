@@ -60,6 +60,7 @@ public enum SignboardVersion {
 public enum SignboardAction: String {
     case create
     case update
+    case delete
     case hide
     case show
     case list

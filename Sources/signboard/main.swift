@@ -7,6 +7,8 @@ private func printUsage() {
       signboard --version
       signboard create [-i id] <text>
       signboard update -i <id> <text>
+      signboard delete -i <id>
+      signboard delete-all
       signboard hide-all
       signboard show-all
       signboard list
@@ -73,6 +75,24 @@ private func parseHideAll(_ args: [String]) -> SignboardCommand? {
         return nil
     }
     return SignboardCommand(action: .hide)
+}
+
+private func parseDelete(_ args: [String]) -> SignboardCommand? {
+    guard args.count == 2, args[0] == "-i" else {
+        return nil
+    }
+    let id = args[1].trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !id.isEmpty else {
+        return nil
+    }
+    return SignboardCommand(action: .delete, id: id, all: false)
+}
+
+private func parseDeleteAll(_ args: [String]) -> SignboardCommand? {
+    guard args.isEmpty else {
+        return nil
+    }
+    return SignboardCommand(action: .delete, all: true)
 }
 
 private func parseShowAll(_ args: [String]) -> SignboardCommand? {
@@ -145,6 +165,10 @@ case "create":
     command = parseCreate(commandArgs)
 case "update":
     command = parseUpdate(commandArgs)
+case "delete":
+    command = parseDelete(commandArgs)
+case "delete-all":
+    command = parseDeleteAll(commandArgs)
 case "hide-all":
     command = parseHideAll(commandArgs)
 case "show-all":
