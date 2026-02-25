@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SignboardVersion {
-    public static let current = "0.1.2"
+    public static let current = "0.2.0"
 
     public static func displayString(bundle: Bundle = .main) -> String {
         if let fromBundle = displayStringIfPresent(in: bundle) {
