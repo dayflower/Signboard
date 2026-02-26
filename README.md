@@ -34,6 +34,14 @@ brew tap dayflower/tap
 brew install --cask dayflower/tap/signboard
 ```
 
+After installation, remove quarantine attributes:
+
+```bash
+xattr -cr "/Applications/SignboardApp.app"
+```
+
+This is required because the app uses ad-hoc code signing (no Apple Developer ID).
+
 ## Install (GitHub Releases)
 
 1. Open the latest release page: [GitHub Releases](https://github.com/dayflower/Signboard/releases/latest)
