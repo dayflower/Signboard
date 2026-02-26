@@ -73,9 +73,6 @@ The CLI requires `SignboardApp` to be running.
 # List all signboards
 signboard list
 
-# Show CLI/App version
-signboard --version
-
 # Create a new signboard
 signboard create "Hello, World!"
 
@@ -94,6 +91,9 @@ signboard delete-all
 # Hide / show all signboards
 signboard hide-all
 signboard show-all
+
+# Show CLI/App version
+signboard --version
 ```
 
 Raycast Script Command examples are available in [examples/raycast](examples/raycast/README.md).
