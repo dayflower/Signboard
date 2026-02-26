@@ -34,6 +34,14 @@ brew tap dayflower/tap
 brew install --cask dayflower/tap/signboard
 ```
 
+After installation, remove quarantine attributes:
+
+```bash
+xattr -cr "/Applications/SignboardApp.app"
+```
+
+This is required because the app uses ad-hoc code signing (no Apple Developer ID).
+
 ## Install (GitHub Releases)
 
 1. Open the latest release page: [GitHub Releases](https://github.com/dayflower/Signboard/releases/latest)
@@ -65,9 +73,6 @@ The CLI requires `SignboardApp` to be running.
 # List all signboards
 signboard list
 
-# Show CLI/App version
-signboard --version
-
 # Create a new signboard
 signboard create "Hello, World!"
 
@@ -86,6 +91,9 @@ signboard delete-all
 # Hide / show all signboards
 signboard hide-all
 signboard show-all
+
+# Show CLI/App version
+signboard --version
 ```
 
 Raycast Script Command examples are available in [examples/raycast](examples/raycast/README.md).
