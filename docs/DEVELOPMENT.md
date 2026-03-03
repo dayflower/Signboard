@@ -58,6 +58,13 @@ Example:
 APP_VERSION=0.2.0 APP_BUILD_VERSION=20260213 ./scripts/package-app.sh
 ```
 
+## Runtime Resource Contract
+
+- Packaged runtime must resolve localized resources from app bundle paths, not SwiftPM-only lookup (`Bundle.module`).
+- Primary target path in packaged app: `SignboardApp.app/Contents/Resources/Signboard_SignboardApp.bundle`.
+- Keep this resource bundle layout unchanged in `scripts/package-app.sh` unless runtime resolution logic is updated in the same change.
+- `swift run SignboardApp` must keep working by discovering the generated resource bundle from `Bundle.main`-relative paths.
+
 ## Version Source of Truth
 
 - Canonical version source: repository-root `VERSION`
