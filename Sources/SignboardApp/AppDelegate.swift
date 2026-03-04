@@ -1,7 +1,8 @@
 import AppKit
+import ServiceManagement
 import SignboardCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUserInterfaceValidations, SignboardMenuActions {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUserInterfaceValidations, NSMenuDelegate, SignboardMenuActions {
     private let store = SignboardStore()
     private let preferences = AppPreferences.shared
     private lazy var manager = SignboardManager(store: store, preferences: preferences)
@@ -40,12 +41,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
     private var isInteractionEnabled = false
     private var statusItem: NSStatusItem?
     private var notificationObserver: NSObjectProtocol?
+    private var launchAtLoginOperation: LaunchAtLoginOperation = .register
+    private var requiresLaunchAtLoginApprovalGuidance = false
+    private var isLaunchAtLoginInFlight = false
+
+    private enum LaunchAtLoginOperation {
+        case register
+        case unregister
+        case unavailable
+    }
+
+    private struct LaunchAtLoginPresentation {
+        let state: NSControl.StateValue
+        let isEnabled: Bool
+        let operation: LaunchAtLoginOperation
+        let requiresApprovalGuidance: Bool
+    }
 
     func applicationDidFinishLaunching(_: Notification) {
         preferences.applyInitialDefaultsIfNeeded()
         NSApp.setActivationPolicy(.accessory)
         buildMainMenu()
         buildStatusItem()
+        refreshLaunchAtLoginMenuState()
 
         manager.loadInitialSignboards(makeController: { [unowned self] signboard in
             self.makeSignboardController(for: signboard)
@@ -114,6 +132,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
 
     @objc func toggleVisibility(_: Any?) {
         setVisibility(!isVisible)
+    }
+
+    @objc func toggleLaunchAtLogin(_: Any?) {
+        guard !isLaunchAtLoginInFlight else { return }
+        guard launchAtLoginOperation != .unavailable else { return }
+
+        let shouldShowApprovalGuidance = requiresLaunchAtLoginApprovalGuidance
+        isLaunchAtLoginInFlight = true
+        refreshLaunchAtLoginMenuState()
+        var didFail = false
+        do {
+            switch launchAtLoginOperation {
+            case .register:
+                try SMAppService.mainApp.register()
+            case .unregister:
+                try SMAppService.mainApp.unregister()
+            case .unavailable:
+                break
+            }
+        } catch {
+            didFail = true
+            showLaunchAtLoginErrorAlert(error)
+        }
+        isLaunchAtLoginInFlight = false
+        refreshLaunchAtLoginMenuState()
+
+        if !didFail && (shouldShowApprovalGuidance || requiresLaunchAtLoginApprovalGuidance) {
+            showLaunchAtLoginApprovalRequiredAlert()
+        }
     }
 
     private func setVisibility(_ visible: Bool) {
@@ -263,7 +310,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
 
-        appMenuItem.submenu = menuBuilder.makeAppMenu(appVersion: SignboardVersion.displayString())
+        let appMenu = menuBuilder.makeAppMenu(appVersion: SignboardVersion.displayString())
+        appMenu.delegate = self
+        appMenuItem.submenu = appMenu
         NSApp.mainMenu = mainMenu
     }
 
@@ -274,7 +323,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
             button.imagePosition = .imageOnly
             button.title = ""
         }
-        item.menu = menuBuilder.makeAppMenu(appVersion: SignboardVersion.displayString())
+        let appMenu = menuBuilder.makeAppMenu(appVersion: SignboardVersion.displayString())
+        appMenu.delegate = self
+        item.menu = appMenu
         statusItem = item
     }
 
@@ -383,9 +434,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
         manager.setActiveSignboard(id: id)
         menuBuilder.updateForActiveSignboard(id: id)
     }
+
+    private func refreshLaunchAtLoginMenuState() {
+        let presentation = launchAtLoginPresentation(for: SMAppService.mainApp.status)
+        launchAtLoginOperation = presentation.operation
+        requiresLaunchAtLoginApprovalGuidance = presentation.requiresApprovalGuidance
+        menuBuilder.setLaunchAtLoginMenu(
+            state: presentation.state,
+            isEnabled: presentation.isEnabled && !isLaunchAtLoginInFlight
+        )
+    }
+
+    private func launchAtLoginPresentation(for status: SMAppService.Status) -> LaunchAtLoginPresentation {
+        switch status {
+        case .notRegistered:
+            return LaunchAtLoginPresentation(state: .off, isEnabled: true, operation: .register, requiresApprovalGuidance: false)
+        case .enabled:
+            return LaunchAtLoginPresentation(state: .on, isEnabled: true, operation: .unregister, requiresApprovalGuidance: false)
+        case .requiresApproval:
+            return LaunchAtLoginPresentation(state: .mixed, isEnabled: true, operation: .unregister, requiresApprovalGuidance: true)
+        case .notFound:
+            return LaunchAtLoginPresentation(state: .off, isEnabled: false, operation: .unavailable, requiresApprovalGuidance: false)
+        @unknown default:
+            return LaunchAtLoginPresentation(state: .off, isEnabled: false, operation: .unavailable, requiresApprovalGuidance: false)
+        }
+    }
+
+    private func showLaunchAtLoginErrorAlert(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = L10n.tr("alert.launch_at_login.error.title", comment: "Launch-at-login error alert title.")
+        alert.informativeText = String(
+            format: L10n.tr("alert.launch_at_login.error.message_format", comment: "Launch-at-login error alert message format with error detail."),
+            locale: Locale.current,
+            error.localizedDescription
+        )
+        alert.addButton(withTitle: L10n.tr("alert.launch_at_login.button_ok", comment: "Launch-at-login alert button title."))
+        alert.runModal()
+    }
+
+    private func showLaunchAtLoginApprovalRequiredAlert() {
+        let alert = NSAlert()
+        alert.messageText = L10n.tr("alert.launch_at_login.approval_required.title", comment: "Launch-at-login approval-required alert title.")
+        alert.informativeText = L10n.tr("alert.launch_at_login.approval_required.message", comment: "Launch-at-login approval-required alert message.")
+        alert.addButton(withTitle: L10n.tr("alert.launch_at_login.button_ok", comment: "Launch-at-login alert button title."))
+        alert.runModal()
+    }
 }
 
 extension AppDelegate {
+    func menuWillOpen(_: NSMenu) {
+        refreshLaunchAtLoginMenuState()
+    }
+
     private func handleCommand(_ command: SignboardCommand) -> SignboardResponse {
         commandHandler.handle(command)
     }

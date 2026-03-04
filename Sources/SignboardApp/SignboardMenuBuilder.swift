@@ -4,6 +4,7 @@ import AppKit
     func createSignboard(_ sender: Any?)
     func deleteAllSignboards(_ sender: Any?)
     func toggleVisibility(_ sender: Any?)
+    func toggleLaunchAtLogin(_ sender: Any?)
     func showFontPanel(_ sender: Any?)
     func selectDragModifier(_ sender: Any?)
     func showSpaceGuide(_ sender: Any?)
@@ -24,6 +25,8 @@ final class SignboardMenuBuilder {
         static let showAllSignboards = L10n.tr("menu.app.show_all_signboards", comment: "App menu item title.")
         static let font = L10n.tr("menu.shared.font", comment: "Shared menu item title.")
         static let spaceGuide = L10n.tr("menu.shared.space_guide", comment: "Shared menu item title.")
+        static let configuration = L10n.tr("menu.app.configuration", comment: "App menu item title.")
+        static let launchAtLogin = L10n.tr("menu.app.launch_at_login", comment: "App menu item title.")
         static let quitSignboard = L10n.tr("menu.app.quit_signboard", comment: "App menu item title.")
         static let editSignboard = L10n.tr("menu.context.edit_signboard", comment: "Context menu item title.")
         static let deleteSignboard = L10n.tr("menu.context.delete_signboard", comment: "Context menu item title.")
@@ -40,6 +43,7 @@ final class SignboardMenuBuilder {
     var preferencesDragModifier: (() -> DragModifier)?
 
     private var toggleVisibilityMenuItems: [NSMenuItem] = []
+    private var launchAtLoginMenuItems: [NSMenuItem] = []
     private var modifierMenuItems: [DragModifier: [NSMenuItem]] = [:]
     private var textColorMenus: [NSMenu] = []
     private var opacityMenus: [NSMenu] = []
@@ -77,6 +81,9 @@ final class SignboardMenuBuilder {
         let helpItem = NSMenuItem(title: MenuTitle.spaceGuide, action: #selector(SignboardMenuActions.showSpaceGuide(_:)), keyEquivalent: "")
         helpItem.target = target
         appMenu.addItem(helpItem)
+
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(makeConfigurationMenuItem())
 
         appMenu.addItem(NSMenuItem.separator())
         let versionTitle = String(format: MenuTitle.versionFormat, locale: Locale.current, appVersion)
@@ -125,6 +132,13 @@ final class SignboardMenuBuilder {
         let title = isVisible ? MenuTitle.hideAllSignboards : MenuTitle.showAllSignboards
         for item in toggleVisibilityMenuItems {
             item.title = title
+        }
+    }
+
+    func setLaunchAtLoginMenu(state: NSControl.StateValue, isEnabled: Bool) {
+        for item in launchAtLoginMenuItems {
+            item.state = state
+            item.isEnabled = isEnabled
         }
     }
 
@@ -190,6 +204,21 @@ final class SignboardMenuBuilder {
         if let modifier = preferencesDragModifier?() {
             updateModifierMenuSelection(modifier)
         }
+        return item
+    }
+
+    private func makeConfigurationMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: MenuTitle.configuration, action: nil, keyEquivalent: "")
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let launchAtLoginItem = NSMenuItem(title: MenuTitle.launchAtLogin, action: #selector(SignboardMenuActions.toggleLaunchAtLogin(_:)), keyEquivalent: "")
+        launchAtLoginItem.target = target
+        launchAtLoginItem.state = .off
+        menu.addItem(launchAtLoginItem)
+        launchAtLoginMenuItems.append(launchAtLoginItem)
+
+        item.submenu = menu
         return item
     }
 
