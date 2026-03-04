@@ -10,7 +10,7 @@ APP_NAME="${APP_NAME:-SignboardApp}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.dayflower.signboard}"
 RESOURCE_BUNDLE_NAME="${RESOURCE_BUNDLE_NAME:-Signboard_SignboardApp.bundle}"
 APP_ICON_NAME="${APP_ICON_NAME:-AppIcon}"
-APP_ICON_SOURCE="${APP_ICON_SOURCE:-${ROOT_DIR}/Sources/SignboardApp/AppIcon.icon/Assets/Image.png}"
+APP_ICON_SOURCE="${APP_ICON_SOURCE:-${ROOT_DIR}/Sources/SignboardApp/AppIcon_1024x1024@1x.png}"
 CREATE_ZIP="${CREATE_ZIP:-0}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 

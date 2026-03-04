@@ -20,7 +20,7 @@ let package = Package(
             name: "SignboardApp",
             dependencies: ["SignboardCore"],
             path: "Sources/SignboardApp",
-            exclude: ["AppIcon.icon"],
+            exclude: ["AppIcon.icon", "AppIcon_1024x1024@1x.png"],
             resources: [
                 .process("Resources")
             ]
