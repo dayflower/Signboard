@@ -9,12 +9,15 @@ DIST_DIR="${DIST_DIR:-${ROOT_DIR}/dist}"
 APP_NAME="${APP_NAME:-SignboardApp}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.dayflower.signboard}"
 RESOURCE_BUNDLE_NAME="${RESOURCE_BUNDLE_NAME:-Signboard_SignboardApp.bundle}"
+APP_ICON_NAME="${APP_ICON_NAME:-AppIcon}"
+APP_ICON_SOURCE="${APP_ICON_SOURCE:-${ROOT_DIR}/Sources/SignboardApp/AppIcon.icon/Assets/Image.png}"
 CREATE_ZIP="${CREATE_ZIP:-0}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 
 APP_BUNDLE_PATH="${DIST_DIR}/${APP_NAME}.app"
 ZIP_PATH="${DIST_DIR}/${APP_NAME}.zip"
 CACHE_DIR="${ROOT_DIR}/.build/local-cache"
+ICON_GENERATOR_SCRIPT="${SCRIPT_DIR}/generate-icns.sh"
 
 mkdir -p "${CACHE_DIR}/swiftpm-module-cache" "${CACHE_DIR}/clang-module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="${CACHE_DIR}/swiftpm-module-cache"
@@ -42,12 +45,27 @@ DEFAULT_VERSION="$("${SCRIPT_DIR}/version.sh" current)"
 APP_VERSION="${APP_VERSION:-${DEFAULT_VERSION}}"
 APP_BUILD_VERSION="${APP_BUILD_VERSION:-${APP_VERSION}}"
 
+if [[ ! -f "${APP_ICON_SOURCE}" ]]; then
+    echo "Expected icon source not found: ${APP_ICON_SOURCE}" >&2
+    exit 1
+fi
+
+if [[ ! -x "${ICON_GENERATOR_SCRIPT}" ]]; then
+    echo "Expected executable script not found: ${ICON_GENERATOR_SCRIPT}" >&2
+    exit 1
+fi
+
 rm -rf "${APP_BUNDLE_PATH}"
 mkdir -p "${APP_BUNDLE_PATH}/Contents/MacOS" "${APP_BUNDLE_PATH}/Contents/Resources"
 
 install -m 755 "${GUI_EXECUTABLE_PATH}" "${APP_BUNDLE_PATH}/Contents/MacOS/SignboardApp"
 install -m 755 "${CLI_EXECUTABLE_PATH}" "${APP_BUNDLE_PATH}/Contents/MacOS/signboard"
 cp -R "${RESOURCE_BUNDLE_PATH}" "${APP_BUNDLE_PATH}/Contents/Resources/${RESOURCE_BUNDLE_NAME}"
+
+ICON_TMP_ROOT="${CACHE_DIR}" "${ICON_GENERATOR_SCRIPT}" \
+    "${APP_ICON_SOURCE}" \
+    "${APP_BUNDLE_PATH}/Contents/Resources/${APP_ICON_NAME}.icns" \
+    "${APP_ICON_NAME}"
 
 cat > "${APP_BUNDLE_PATH}/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -66,6 +84,8 @@ cat > "${APP_BUNDLE_PATH}/Contents/Info.plist" <<PLIST
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>${APP_NAME}</string>
+    <key>CFBundleIconFile</key>
+    <string>${APP_ICON_NAME}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
