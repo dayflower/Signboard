@@ -7,6 +7,8 @@
 "menu.app.show_all_signboards" = "Show All Signboards";
 "menu.app.default_text_color" = "Default Text Color";
 "menu.app.drag_modifier" = "Drag Modifier";
+"menu.app.configuration" = "Configuration";
+"menu.app.launch_at_login" = "Launch at Login";
 "menu.app.version_format" = "Version %@";
 "menu.app.quit_signboard" = "Quit Signboard";
 
@@ -35,6 +37,12 @@
 "alert.delete_all_signboards.message" = "This will delete every signboard. This cannot be undone.";
 "alert.delete_all_signboards.button_delete_all" = "Delete All";
 "alert.delete_all_signboards.button_cancel" = "Cancel";
+
+"alert.launch_at_login.error.title" = "Couldn’t Update Launch at Login";
+"alert.launch_at_login.error.message_format" = "Signboard couldn’t update Launch at Login.\n\nError: %@\n\nIf you are running a development build, run the packaged app from /Applications.\nIf approval is needed, open System Settings > Login Items and allow Signboard.";
+"alert.launch_at_login.approval_required.title" = "Approval Required";
+"alert.launch_at_login.approval_required.message" = "Launch at Login needs approval in System Settings.\n\nOpen System Settings > Login Items and allow Signboard.";
+"alert.launch_at_login.button_ok" = "OK";
 
 "signboard.default_name" = "Signboard %d";
 
