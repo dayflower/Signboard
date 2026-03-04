@@ -5,6 +5,10 @@ A lightweight macOS menu bar app that displays floating text panels ("signboards
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 
+## Screenshot
+
+![Signboard app preview](docs/images/preview.png)
+
 ## Why Signboard
 
 If you use multiple macOS Spaces, it is easy to lose track of what each Space is for.
