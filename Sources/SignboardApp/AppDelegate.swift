@@ -454,7 +454,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSFontChanging, NSUser
         case .requiresApproval:
             return LaunchAtLoginPresentation(state: .mixed, isEnabled: true, operation: .unregister, requiresApprovalGuidance: true)
         case .notFound:
-            return LaunchAtLoginPresentation(state: .off, isEnabled: false, operation: .unavailable, requiresApprovalGuidance: false)
+            return LaunchAtLoginPresentation(state: .off, isEnabled: true, operation: .register, requiresApprovalGuidance: false)
         @unknown default:
             return LaunchAtLoginPresentation(state: .off, isEnabled: false, operation: .unavailable, requiresApprovalGuidance: false)
         }

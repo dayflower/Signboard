@@ -100,6 +100,11 @@ cat > "${APP_BUNDLE_PATH}/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+if ! codesign --force --sign - "${APP_BUNDLE_PATH}"; then
+    echo "Failed to code sign app bundle: ${APP_BUNDLE_PATH}" >&2
+    exit 1
+fi
+
 if [[ "${CREATE_ZIP}" == "1" ]]; then
     rm -f "${ZIP_PATH}"
     ditto -c -k --sequesterRsrc --keepParent "${APP_BUNDLE_PATH}" "${ZIP_PATH}"
