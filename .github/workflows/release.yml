@@ -1,43 +1,75 @@
 name: Release
 
+# When a version bump PR is merged into main (see scripts/bump-version-pr.sh),
+# VERSION changes. This workflow reads that version, and if a matching tag does
+# not yet exist, it builds the app, signs it with a Developer ID certificate,
+# notarizes and staples it, and publishes a GitHub Release. On ordinary pushes
+# (version unchanged) it exits early.
+#
+# The tag is created by `gh release create --target` at the very end rather than
+# pushed by hand up front, so a failure part-way through leaves no tag behind and
+# the run can simply be retried.
+
 on:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - main
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
-    runs-on: macos-14
+  check:
+    name: Check release version
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate source version consistency
-        id: versions
+      - name: Resolve release version
+        id: version
         run: |
           set -euo pipefail
 
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          VERSION_FILE_VERSION="$(./scripts/version.sh current)"
-
-          ./scripts/version.sh validate "${TAG_VERSION}"
           ./scripts/version.sh assert-consistent
+          VERSION="$(./scripts/version.sh current)"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
-          if [[ "${TAG_VERSION}" != "${VERSION_FILE_VERSION}" ]]; then
-            echo "Version mismatch: tag=${TAG_VERSION}, VERSION=${VERSION_FILE_VERSION}" >&2
-            exit 1
+          # Ask the remote rather than the local checkout so no deep fetch of
+          # tags is needed.
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists; nothing to release."
+            echo "release=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Releasing v${VERSION}."
+            echo "release=true" >> "${GITHUB_OUTPUT}"
           fi
 
-          echo "tag_version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "source_version=${VERSION_FILE_VERSION}" >> "${GITHUB_OUTPUT}"
+  release:
+    name: Release
+    needs: check
+    if: ${{ needs.check.outputs.release == 'true' }}
+    runs-on: macos-14
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_VERSION: ${{ needs.check.outputs.version }}
+      TAG_NAME: v${{ needs.check.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Verify signing secrets
         env:
@@ -92,8 +124,6 @@ jobs:
           echo "CODESIGN_IDENTITY=${identity}" >> "${GITHUB_ENV}"
 
       - name: Build release artifact
-        env:
-          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
         run: |
           set -euo pipefail
 
@@ -120,8 +150,6 @@ jobs:
 
       - name: Package release artifact
         id: package
-        env:
-          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
         run: |
           set -euo pipefail
 
@@ -133,7 +161,6 @@ jobs:
       - name: Generate checksum
         id: checksum
         env:
-          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
           ZIP_PATH: ${{ steps.package.outputs.zip_path }}
         run: |
           set -euo pipefail
@@ -143,12 +170,11 @@ jobs:
           CHECKSUM_VALUE="$(awk '{ print $1 }' "${CHECKSUM_PATH}")"
 
           echo "checksum_path=${CHECKSUM_PATH}" >> "${GITHUB_OUTPUT}"
-          echo "checksum_value=${CHECKSUM_VALUE}" >> "${GITHUB_OUTPUT}"
 
           {
             echo "### Release Artifact"
             echo ""
-            echo "- Tag: \`${GITHUB_REF_NAME}\`"
+            echo "- Tag: \`${TAG_NAME}\`"
             echo "- Version: \`${SOURCE_VERSION}\`"
             echo "- Archive: \`${ZIP_PATH}\`"
             echo "- SHA-256: \`${CHECKSUM_VALUE}\`"
@@ -158,11 +184,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists. This workflow only creates new releases." >&2
+          if gh release view "${TAG_NAME}" > /dev/null 2>&1; then
+            echo "Release ${TAG_NAME} already exists. This workflow only creates new releases." >&2
             exit 1
           fi
 
+      # --target tags the commit being released, so no separate tagging step is
+      # needed and nothing is tagged unless the build got this far.
       - name: Create release and upload assets
         env:
           ZIP_PATH: ${{ steps.package.outputs.zip_path }}
@@ -170,11 +198,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh release create "${GITHUB_REF_NAME}" \
+          gh release create "${TAG_NAME}" \
             "${ZIP_PATH}" \
             "${CHECKSUM_PATH}" \
-            --title "${GITHUB_REF_NAME}" \
-            --notes "Automated release for ${GITHUB_REF_NAME}"
+            --target "${GITHUB_SHA}" \
+            --title "${TAG_NAME}" \
+            --notes "Automated release for ${TAG_NAME}"
 
       # The cask is rendered from .github/homebrew/signboard.rb.mustache in this
       # repository, so distribution metadata is reviewed alongside app changes.
@@ -183,7 +212,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          release-tag: ${{ github.ref_name }}
+          release-tag: v${{ needs.check.outputs.version }}
           template-path: .github/homebrew/signboard.rb.mustache
           output-path: Casks/signboard.rb
           asset-map: |
