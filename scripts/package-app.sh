@@ -7,17 +7,19 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CONFIGURATION="${CONFIGURATION:-release}"
 DIST_DIR="${DIST_DIR:-${ROOT_DIR}/dist}"
 APP_NAME="${APP_NAME:-SignboardApp}"
-APP_IDENTIFIER="${APP_IDENTIFIER:-com.dayflower.signboard}"
+APP_IDENTIFIER="${APP_IDENTIFIER:-io.github.dayflower.signboard}"
 RESOURCE_BUNDLE_NAME="${RESOURCE_BUNDLE_NAME:-Signboard_SignboardApp.bundle}"
 APP_ICON_NAME="${APP_ICON_NAME:-AppIcon}"
 APP_ICON_SOURCE="${APP_ICON_SOURCE:-${ROOT_DIR}/Sources/SignboardApp/AppIcon_1024x1024@1x.png}"
 CREATE_ZIP="${CREATE_ZIP:-0}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
+CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 
 APP_BUNDLE_PATH="${DIST_DIR}/${APP_NAME}.app"
 ZIP_PATH="${DIST_DIR}/${APP_NAME}.zip"
 CACHE_DIR="${ROOT_DIR}/.build/local-cache"
 ICON_GENERATOR_SCRIPT="${SCRIPT_DIR}/generate-icns.sh"
+ENTITLEMENTS_PATH="${SCRIPT_DIR}/entitlements.plist"
 
 mkdir -p "${CACHE_DIR}/swiftpm-module-cache" "${CACHE_DIR}/clang-module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="${CACHE_DIR}/swiftpm-module-cache"
@@ -52,6 +54,11 @@ fi
 
 if [[ ! -x "${ICON_GENERATOR_SCRIPT}" ]]; then
     echo "Expected executable script not found: ${ICON_GENERATOR_SCRIPT}" >&2
+    exit 1
+fi
+
+if [[ ! -f "${ENTITLEMENTS_PATH}" ]]; then
+    echo "Expected entitlements file not found: ${ENTITLEMENTS_PATH}" >&2
     exit 1
 fi
 
@@ -100,8 +107,33 @@ cat > "${APP_BUNDLE_PATH}/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-if ! codesign --force --sign - "${APP_BUNDLE_PATH}"; then
+# Release signing (CI) sets CODESIGN_IDENTITY to a Developer ID identity and adds
+# the hardened runtime plus a secure timestamp, both required by notarization.
+# Local builds leave it unset and fall back to ad-hoc signing.
+CODESIGN_ARGS=(--force --entitlements "${ENTITLEMENTS_PATH}")
+if [[ -n "${CODESIGN_IDENTITY}" ]]; then
+    CODESIGN_ARGS+=(--options runtime --timestamp --sign "${CODESIGN_IDENTITY}")
+else
+    CODESIGN_ARGS+=(--sign -)
+fi
+
+# Sign inside-out: the bundled CLI is a second Mach-O in Contents/MacOS and is
+# not covered by signing the bundle itself. It has no Info.plist to derive an
+# identifier from, so give it an explicit one instead of the path-derived
+# default; the app bundle takes its identifier from CFBundleIdentifier.
+if ! codesign "${CODESIGN_ARGS[@]}" --identifier "${APP_IDENTIFIER}.cli" \
+    "${APP_BUNDLE_PATH}/Contents/MacOS/signboard"; then
+    echo "Failed to code sign bundled CLI: ${APP_BUNDLE_PATH}/Contents/MacOS/signboard" >&2
+    exit 1
+fi
+
+if ! codesign "${CODESIGN_ARGS[@]}" "${APP_BUNDLE_PATH}"; then
     echo "Failed to code sign app bundle: ${APP_BUNDLE_PATH}" >&2
+    exit 1
+fi
+
+if ! codesign --verify --strict --verbose=2 "${APP_BUNDLE_PATH}"; then
+    echo "Code signature verification failed: ${APP_BUNDLE_PATH}" >&2
     exit 1
 fi
 
