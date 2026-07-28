@@ -39,17 +39,95 @@ jobs:
           echo "tag_version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "source_version=${VERSION_FILE_VERSION}" >> "${GITHUB_OUTPUT}"
 
+      - name: Verify signing secrets
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for name in MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD \
+            APPLE_API_KEY_ID APPLE_API_ISSUER_ID APPLE_API_KEY_P8; do
+            if [[ -z "${!name}" ]]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required signing secrets: ${missing[*]}" >&2
+            echo "Releases must be signed with a Developer ID identity and notarized; see docs/DEVELOPMENT.md." >&2
+            exit 1
+          fi
+
+      # The action creates a throwaway keychain and removes it again in its post
+      # step, so nothing has to be cleaned up by hand.
+      - name: Import Developer ID certificate
+        uses: Apple-Actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+
+      # Pass the identity to package-app.sh by its SHA-1 hash so the
+      # certificate's common name never has to be hardcoded. The action put its
+      # keychain on the search list, so search that rather than guessing where
+      # the file lives; the runner's own login keychain holds no identities.
+      - name: Resolve signing identity
+        run: |
+          set -euo pipefail
+
+          identity="$(security find-identity -v -p codesigning \
+            | awk '/Developer ID Application/ { print $2; exit }')"
+
+          if [[ -z "${identity}" ]]; then
+            echo "No Developer ID Application identity on the keychain search list" >&2
+            security list-keychains >&2
+            security find-identity -v -p codesigning >&2
+            exit 1
+          fi
+
+          echo "CODESIGN_IDENTITY=${identity}" >> "${GITHUB_ENV}"
+
       - name: Build release artifact
+        env:
+          SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
+        run: |
+          set -euo pipefail
+
+          APP_VERSION="${SOURCE_VERSION}" APP_BUILD_VERSION="${GITHUB_RUN_NUMBER}" ./scripts/package-app.sh
+
+      # Stapling writes the ticket into the bundle, so this has to happen before
+      # the distributed zip is created.
+      - name: Notarize and staple
+        env:
+          NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          NOTARY_KEY_BASE64: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+
+          NOTARY_KEY_PATH="${RUNNER_TEMP}/notary-key.p8"
+          export NOTARY_KEY_PATH
+          printf '%s' "${NOTARY_KEY_BASE64}" | base64 --decode > "${NOTARY_KEY_PATH}"
+          ./scripts/notarize-app.sh
+
+      - name: Remove notarization key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/notary-key.p8"
+
+      - name: Package release artifact
         id: package
         env:
           SOURCE_VERSION: ${{ steps.versions.outputs.source_version }}
         run: |
           set -euo pipefail
 
-          CREATE_ZIP=1 APP_VERSION="${SOURCE_VERSION}" APP_BUILD_VERSION="${GITHUB_RUN_NUMBER}" ./scripts/package-app.sh
-
           ZIP_PATH="dist/SignboardApp-${SOURCE_VERSION}.zip"
-          mv "dist/SignboardApp.zip" "${ZIP_PATH}"
+          rm -f "${ZIP_PATH}"
+          ditto -c -k --sequesterRsrc --keepParent "dist/SignboardApp.app" "${ZIP_PATH}"
           echo "zip_path=${ZIP_PATH}" >> "${GITHUB_OUTPUT}"
 
       - name: Generate checksum
@@ -98,36 +176,20 @@ jobs:
             --title "${GITHUB_REF_NAME}" \
             --notes "Automated release for ${GITHUB_REF_NAME}"
 
-  bump-homebrew-cask:
-    name: Bump Homebrew Cask
-    runs-on: macos-14
-    needs: release
-    if: ${{ needs.release.result == 'success' }}
-    permissions:
-      contents: read
-    steps:
-      - name: Configure git user
-        uses: Homebrew/actions/git-user-config@main
+      # The cask is rendered from .github/homebrew/signboard.rb.mustache in this
+      # repository, so distribution metadata is reviewed alongside app changes.
+      - name: Update Homebrew tap
+        uses: dayflower/brew-up@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
-          username: BrewTestBot
-
-      - name: Tap dayflower/tap
-        run: brew tap dayflower/tap
-
-      - name: Preflight cask availability
-        shell: bash
-        run: |
-          set -euo pipefail
-          cask="dayflower/tap/signboard"
-          if ! brew info --cask "$cask"; then
-            echo "::error title=Homebrew cask preflight failed::Unable to resolve $cask after tapping dayflower/tap. Verify that the cask exists in dayflower/homebrew-tap and that HOMEBREW_GITHUB_API_TOKEN can access it."
-            exit 1
-          fi
-
-      - name: Bump Signboard cask
-        uses: Homebrew/actions/bump-packages@main
-        with:
-          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
-          casks: dayflower/tap/signboard
-          fork: false
+          release-tag: ${{ github.ref_name }}
+          template-path: .github/homebrew/signboard.rb.mustache
+          output-path: Casks/signboard.rb
+          asset-map: |
+            default=SignboardApp-{{version}}.zip
+          target-repo: dayflower/homebrew-tap
+          target-branch: main
+          target-repo-token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          publish-mode: pr-auto-merge
+          auto-merge-method: squash

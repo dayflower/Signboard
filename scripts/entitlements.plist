@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Not sandboxed: the app talks to the bundled CLI through
+         DistributedNotificationCenter and registers login items through
+         SMAppService, neither of which needs an entitlement for a
+         Developer ID app running under the hardened runtime. Kept as an
+         explicit (empty) declaration and a hook for future needs, e.g.
+         com.apple.security.get-task-allow when attaching a debugger. -->
+</dict>
+</plist>
