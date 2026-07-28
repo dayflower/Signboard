@@ -120,22 +120,6 @@ Commands:
 - `sync-swift [version]`: sync `SignboardVersion.current` (from `VERSION` when omitted)
 - `assert-consistent`: fail unless `VERSION` and `SignboardVersion.current` match
 
-## Codex Skill Integration
-
-This repository ships a project-local Codex skill at:
-
-- `.codex/skills/signboard-release-skill`
-
-Modern Codex discovers project-local skills from `.codex/skills` directly.
-No installation script is required for this repository-specific skill.
-
-If Codex is already running, restart it after pulling changes so the updated skill is reloaded.
-
-Skill invocation examples:
-
-- `Use $signboard-release-skill to run a patch version bump PR for this repository.`
-- `Use $signboard-release-skill to run the post-merge lightweight tagging flow for version 0.2.0.`
-
 ## Bundle Verification
 
 From repository root:
@@ -176,22 +160,34 @@ Workflow file: `.github/workflows/release.yml`
 
 Trigger:
 
-- Push tag matching `vX.Y.Z`
+- Push to `main`
 
-Main behavior:
+Tags are created by the workflow, not pushed by hand. The `check` job reads `VERSION` and compares it
+with the tags on `origin`; when `vX.Y.Z` already exists the `release` job is skipped, so ordinary
+pushes to `main` cost one short `ubuntu-latest` run and nothing else.
 
-1. Validate tag format and compare tag version (`vX.Y.Z`) to `VERSION`.
-2. Validate `VERSION` and `SignboardVersion.current` consistency.
-3. Fail fast when any signing secret is missing; releases are never published unsigned.
-4. Import the Developer ID certificate into a throwaway keychain (`Apple-Actions/import-codesign-certs`).
-5. Resolve the `Developer ID Application` identity by SHA-1 hash and export it as `CODESIGN_IDENTITY`.
-6. Build package artifact with `APP_VERSION=<version> APP_BUILD_VERSION=<github run number> ./scripts/package-app.sh`.
-7. Notarize and staple with `./scripts/notarize-app.sh`, then delete the decoded API key.
-8. Archive the stapled bundle into `dist/SignboardApp-<version>.zip`.
-9. Generate `dist/SignboardApp-<version>.zip.sha256`.
-10. Ensure a release with the same tag does not already exist.
-11. Create a GitHub Release and upload both zip and checksum assets.
-12. Render `.github/homebrew/signboard.rb.mustache` with `dayflower/brew-up` and publish it to `Casks/signboard.rb` in `dayflower/homebrew-tap` as an auto-merged pull request.
+`check` job behavior:
+
+1. Validate `VERSION` and `SignboardVersion.current` consistency.
+2. Read the version and check `origin` for a `vX.Y.Z` tag.
+3. Emit `version` and `release` outputs; `release=false` skips the `release` job.
+
+`release` job behavior:
+
+1. Fail fast when any signing secret is missing; releases are never published unsigned.
+2. Import the Developer ID certificate into a throwaway keychain (`Apple-Actions/import-codesign-certs`).
+3. Resolve the `Developer ID Application` identity by SHA-1 hash and export it as `CODESIGN_IDENTITY`.
+4. Build package artifact with `APP_VERSION=<version> APP_BUILD_VERSION=<github run number> ./scripts/package-app.sh`.
+5. Notarize and staple with `./scripts/notarize-app.sh`, then delete the decoded API key.
+6. Archive the stapled bundle into `dist/SignboardApp-<version>.zip`.
+7. Generate `dist/SignboardApp-<version>.zip.sha256`.
+8. Ensure a release with the same tag does not already exist.
+9. Create a GitHub Release with `gh release create --target <commit>`, which creates the `vX.Y.Z` tag,
+   and upload both zip and checksum assets.
+10. Render `.github/homebrew/signboard.rb.mustache` with `dayflower/brew-up` and publish it to `Casks/signboard.rb` in `dayflower/homebrew-tap` as an auto-merged pull request.
+
+Because the tag is created last, a run that fails part-way through leaves no tag behind and can be
+retried by re-running the workflow.
 
 ## Homebrew Cask Template
 
@@ -205,15 +201,15 @@ do not edit `Casks/signboard.rb` in the tap repository by hand.
 The `asset-map` entry `default=SignboardApp-{{version}}.zip` must keep matching the archive name
 produced by the `Package release artifact` step.
 
-## PR-first Version Bump Flow
+## Cutting a Release
 
-Run from a clean working tree:
+Run from a clean working tree on `main`:
 
 ```bash
 ./scripts/bump-version-pr.sh <major|minor|patch>
 ```
 
-The script performs:
+That is the whole manual flow. The script performs:
 
 1. Read current version from `VERSION`.
 2. Compute next version from bump type.
@@ -223,27 +219,9 @@ The script performs:
 6. Open PR to `main` with title `chore: bump version to vX.Y.Z` and label `release`.
 7. Enable auto-merge.
 
-## Post-merge Tagging Flow (Lightweight Tags)
-
-After the bump PR is merged:
-
-```bash
-./scripts/tag-merged-release.sh
-```
-
-Optional explicit version assertion:
-
-```bash
-./scripts/tag-merged-release.sh 0.2.0
-```
-
-The script performs:
-
-1. Verify clean working tree.
-2. Run `git switch main` and `git pull --ff-only`.
-3. Validate `VERSION` and `SignboardVersion.current` consistency.
-4. Create lightweight tag `vX.Y.Z` on merged `main` HEAD.
-5. Push tag to `origin`.
+When the PR auto-merges, the resulting push to `main` triggers `release.yml`, which sees a `VERSION`
+with no matching tag and runs the full sign, notarize, tag, publish, and Homebrew bump sequence.
+There is no manual tagging step.
 
 ## Operator Runbook for Version Mismatch
 
