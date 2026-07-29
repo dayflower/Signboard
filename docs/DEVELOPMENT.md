@@ -154,6 +154,32 @@ Main behavior:
 2. Run `./scripts/version.sh assert-consistent`.
 3. Fail checks when `VERSION` and `SignboardVersion.current` differ.
 
+## Action Pinning Guard
+
+Workflow file: `.github/workflows/pinact.yml`
+
+Trigger:
+
+- `pull_request`
+
+[pinact](https://github.com/suzuki-shunsuke/pinact) requires every action referenced by a workflow to
+be pinned to a full commit SHA, so a retagged upstream release cannot change what CI executes. Refs
+carry a `# vX.Y.Z` comment for readability; that comment is what `pinact run` updates when bumping a
+version.
+
+Main behavior:
+
+1. Checkout repository without persisting credentials.
+2. Run `suzuki-shunsuke/pinact-action`, which rewrites unpinned refs and pushes a fixup commit to the
+   pull request branch.
+
+The fixup is pushed with a GitHub App token rather than `GITHUB_TOKEN`, so the resulting commit
+re-triggers the other workflows. That is why the workflow only grants `contents: read`.
+
+To pin refs locally before pushing, install pinact (`brew install pinact`) and run `pinact run`;
+`pinact run --check` reports unpinned refs without editing files. There is no `.pinact.yaml`, so the
+defaults apply to everything under `.github/workflows/`.
+
 ## Release Workflow
 
 Workflow file: `.github/workflows/release.yml`
@@ -277,3 +303,8 @@ Signing and notarization (all required; the release workflow fails when any is m
 Homebrew cask bump:
 
 - `HOMEBREW_GITHUB_API_TOKEN` with permission to push branches and open pull requests in `dayflower/homebrew-tap`.
+
+Action pinning guard, as a GitHub App installed on this repository with `contents: write`:
+
+- `ACTIONS_APP_ID` (repository variable, not a secret): the App ID.
+- `ACTIONS_APP_PRIVATE_KEY`: the App's private key.
