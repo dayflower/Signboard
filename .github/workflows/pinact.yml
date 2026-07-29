@@ -1,0 +1,32 @@
+name: pinact
+
+# Verifies that every action referenced by a workflow is pinned to a full commit
+# SHA, and pushes a fixup commit to the pull request branch when it is not.
+#
+# The fixup is pushed with a GitHub App token (vars.ACTIONS_APP_ID /
+# secrets.ACTIONS_APP_PRIVATE_KEY) rather than GITHUB_TOKEN, so the resulting
+# commit re-triggers the other workflows. That is also why checkout must not
+# persist its own credentials and why this workflow only needs contents: read.
+
+on:
+  pull_request:
+
+concurrency:
+  group: pinact-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pinact:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: suzuki-shunsuke/pinact-action@896d595f299e71d65b9d28349d6956abe144390a # v3.0.0
+        with:
+          app_id: ${{ vars.ACTIONS_APP_ID }}
+          app_private_key: ${{ secrets.ACTIONS_APP_PRIVATE_KEY }}

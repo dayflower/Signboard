@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve release version
         id: version
@@ -69,7 +69,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify signing secrets
         env:
@@ -98,7 +98,7 @@ jobs:
       # The action creates a throwaway keychain and removes it again in its post
       # step, so nothing has to be cleaned up by hand.
       - name: Import Developer ID certificate
-        uses: Apple-Actions/import-codesign-certs@v7
+        uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
           p12-file-base64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           p12-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -208,7 +208,7 @@ jobs:
       # The cask is rendered from .github/homebrew/signboard.rb.mustache in this
       # repository, so distribution metadata is reviewed alongside app changes.
       - name: Update Homebrew tap
-        uses: dayflower/brew-up@v1
+        uses: dayflower/brew-up@d54916a2db1d7182a4681a6e72adc01022f37794 # v1.1.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
